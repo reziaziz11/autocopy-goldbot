@@ -1,9 +1,9 @@
 services:
   - type: web
     name: djgoldbot
-    runtime: python
+    env: python
     buildCommand: ""
-    startCommand: "python main.py"
+    startCommand: uvicorn app:app --host 0.0.0.0 --port 10000
     envVars:
       - key: BOT_TOKEN
-        sync: false
+        value: 7524328423:AAGbx7KMgXRzIr9gAmg9I4WznFRmWiXKuNQ
