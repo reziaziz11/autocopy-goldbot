@@ -1,4 +1,3 @@
-import asyncio
 import os
 from telegram.ext import ApplicationBuilder
 from handlers.start import start_handler
@@ -18,7 +17,8 @@ async def main():
     app.add_handler(help_handler)
 
     print("Bot started...")
-    await app.run_polling()  # ✅ Ini cara baru dan satu-satunya yang disarankan
+    await app.run_polling()  # ✅ Cara baru, nggak ada .updater lagi
 
 if __name__ == "__main__":
+    import asyncio
     asyncio.run(main())
