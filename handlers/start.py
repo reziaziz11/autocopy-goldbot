@@ -1,22 +1,30 @@
+# handlers/start.py
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# Fungsi handler untuk /start
+async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    name = user.first_name if user else "Trader"
+
+    # Tombol inline
     keyboard = [
         [
             InlineKeyboardButton("📈 Cek Sinyal", callback_data="cek_sinyal"),
-            InlineKeyboardButton("💼 Daftar Akun", callback_data="daftar_akun")
+            InlineKeyboardButton("💳 Membership", callback_data="membership"),
         ],
         [
-            InlineKeyboardButton("👑 Membership VIP", callback_data="vip")
+            InlineKeyboardButton("📊 Statistik", callback_data="statistik"),
+            InlineKeyboardButton("❓ Bantuan", callback_data="bantuan"),
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    
+
     await update.message.reply_text(
-        "👋 Selamat datang di *DJGOLD_BOT*!\n\n"
-        "Saya akan bantu kamu mendapatkan sinyal XAUUSD terbaik dan auto-copy ke akun kamu.\n\n"
-        "Silakan pilih menu di bawah ini untuk mulai 👇",
+        f"👋 Hai {name}!\n\n"
+        "Selamat datang di *DJGOLD_BOT* — sistem auto copy trading XAUUSD 💰\n\n"
+        "Silakan pilih menu di bawah ini untuk mulai:",
         reply_markup=reply_markup,
         parse_mode="Markdown"
     )
