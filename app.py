@@ -1,51 +1,35 @@
-# app.py
-
 import os
 import asyncio
 from dotenv import load_dotenv
 from flask import Flask, request
-from telegram.ext import ApplicationBuilder, CommandHandler
-from telegram import Update
-import nest_asyncio
+from main import build_bot
 
-# Load environment variables
 load_dotenv()
-TOKEN = os.getenv("BOT_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://djgoldbot.onrender.com/webhook")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
-# Inisialisasi Flask app
-flask_app = Flask(__name__)
+app = Flask(__name__)
 
-# Inisialisasi bot Telegram
-bot_app = ApplicationBuilder().token(TOKEN).build()
+@app.route('/')
+def index():
+    return "DJGOLD_BOT Aktif", 200
 
-
-# === Handler Telegram ===
-async def start(update: Update, context):
-    await update.message.reply_text("✅ Bot aktif dan siap menerima perintah!")
-
-
-# === Setup Handler ===
-bot_app.add_handler(CommandHandler("start", start))
-
-
-# === Flask Endpoint untuk Webhook ===
-@flask_app.route("/webhook", methods=["POST"])
-def webhook():
+@app.route('/webhook', methods=['POST'])
+async def webhook():
     if request.method == "POST":
-        update = Update.de_json(request.get_json(force=True), bot_app.bot)
-        asyncio.run(bot_app.process_update(update))
-    return "ok"
+        await bot_app.update_queue.put(request.json)
+        return "OK", 200
 
-
-# === Fungsi utama startup bot dan webhook ===
 async def main():
+    global bot_app
+    bot_app = await build_bot()
     await bot_app.bot.set_webhook(url=WEBHOOK_URL)
-    print("✅ Webhook telah diset ke:", WEBHOOK_URL)
-    # Jangan jalankan polling karena kita pakai webhook
+    print(f"✅ Webhook telah diset ke: {WEBHOOK_URL}")
+    bot_app.run_webhook(
+        listen="0.0.0.0",
+        port=int(os.environ.get("PORT", 10000)),
+        webhook_path="/webhook",
+    )
 
-# === Start Flask + Bot secara bersamaan ===
 if __name__ == "__main__":
-    nest_asyncio.apply()
     asyncio.run(main())
-    flask_app.run(host="0.0.0.0", port=10000)
