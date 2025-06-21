@@ -1,14 +1,12 @@
 import os
 import asyncio
 from flask import Flask, request
-from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-# === Load environment ===
-load_dotenv()
-TOKEN = os.getenv("TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://djgoldbot.onrender.com/webhook")
+# === Langsung pakai token (sementara, bypass .env)
+TOKEN = "7524328423:AAGbx7KMgXRzIr9gAmg91aWznFRmiXKuNQ"
+WEBHOOK_URL = "https://djgoldbot.onrender.com/webhook"
 
 # === Flask app init ===
 flask_app = Flask(__name__)
@@ -24,8 +22,7 @@ bot_app.add_handler(CommandHandler("start", start))
 # === Webhook endpoint ===
 @flask_app.route("/webhook", methods=["POST"])
 async def webhook():
-    update = Update.de_json(request.get_json(force=True), bot_app.bot)
-    await bot_app.update_queue.put(update)
+    await bot_app.update_queue.put(Update.de_json(request.get_json(force=True), bot_app.bot))
     return "ok", 200
 
 # === Healthcheck ===
@@ -35,17 +32,17 @@ def index():
 
 # === Async main setup ===
 async def main():
+    await bot_app.bot.set_webhook(url=WEBHOOK_URL)
+    print(f"✅ Webhook set ke: {WEBHOOK_URL}")
     await bot_app.initialize()
     await bot_app.start()
-    await bot_app.bot.set_webhook(url=WEBHOOK_URL)
-    print(f"✅ Webhook di-set ke: {WEBHOOK_URL}")
-    print("🚀 Bot siap menerima update dari Telegram")
+    await bot_app.updater.start_polling()
+    print("🚀 Bot polling aktif...")
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
-    except RuntimeError:
-        # Untuk Python 3.11+ default di Render
+    except RuntimeError as e:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(main())
