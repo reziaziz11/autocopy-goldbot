@@ -1,37 +1,47 @@
 import os
+import asyncio
 from dotenv import load_dotenv
 from flask import Flask
 from threading import Thread
-from telegram.ext import ApplicationBuilder, CommandHandler
-import asyncio
 
-# === Load Token ===
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler
+from handlers.start import start
+from handlers.callbacks import button_handler
+
+# === Load Token dari .env ===
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
 
-# === Flask App ===
+# === Inisialisasi Flask ===
 flask_app = Flask(__name__)
 
-@flask_app.route("/")
+@flask_app.route('/')
 def home():
-    return "✅ DJGOLD_BOT is running!"
+    return "DJGOLD_BOT Aktif 🔥"
 
-# === Bot Handler ===
-async def start(update, context):
-    await update.message.reply_text("✅ Bot aktif dan siap menerima perintah!")
+# === Fungsi untuk menjalankan Flask di thread lain ===
+def run_flask():
+    flask_app.run(host="0.0.0.0", port=10000)
 
-async def telegram_bot():
+# === Fungsi utama untuk menjalankan bot ===
+async def run_bot():
     app = ApplicationBuilder().token(TOKEN).build()
+
+    # === Tambahkan Handler di sini ===
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(button_handler))  # << Ini penting
+
+    # === Jalankan polling ===
     await app.initialize()
     await app.start()
-    await app.updater.start_polling()
-    # Jangan pakai `await app.run_polling()` karena dia blocking loop
+    print("🚀 Bot Telegram dijalankan via polling...")
+    await app.run_polling()
 
-def run_bot():
-    asyncio.run(telegram_bot())
-
-# === Jalankan Flask dan Bot Secara Paralel ===
+# === Jalankan Flask dan Bot secara bersamaan ===
 if __name__ == "__main__":
-    Thread(target=run_bot).start()
-    flask_app.run(host="0.0.0.0", port=10000)
+    # Jalankan Flask di thread terpisah
+    flask_thread = Thread(target=run_flask)
+    flask_thread.start()
+
+    # Jalankan Bot di thread utama (asyncio)
+    asyncio.run(run_bot())
