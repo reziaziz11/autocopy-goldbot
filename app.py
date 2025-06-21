@@ -1,34 +1,30 @@
-import os
-import asyncio
-from dotenv import load_dotenv
-from flask import Flask
-from threading import Thread
-from telegram.ext import ApplicationBuilder
-from handlers.start import start_handler  # pastikan handler ini udah benar dan ada
+======== DEBUG CHECK BOT DJGOLD_BOT ========
 
-import nest_asyncio
+from flask import Flask, request from telegram import Update from telegram.ext import Application, CommandHandler, ContextTypes import nest_asyncio import asyncio import os from dotenv import load_dotenv
 
-# === Init Flask ===
-app_flask = Flask(__name__)
+=== Load env ===
 
-@app_flask.route("/")
-def home():
-    return "✅ DJGOLD Bot is live and running!"
+load_dotenv() TOKEN = os.getenv("TOKEN")
 
-# === Load Token ===
-load_dotenv()
-TOKEN = os.getenv("TOKEN")
+=== Flask App ===
 
-# === Bot Handler ===
-async def run_bot():
-    app = ApplicationBuilder().token(TOKEN).build()
-    app.add_handler(start_handler)
-    print("🚀 Bot Telegram dijalankan via polling...")
-    await app.run_polling()
+app = Flask(name)
 
-# === Run Both Flask & Telegram Bot Together ===
-if __name__ == "__main__":
-    nest_asyncio.apply()
-    loop = asyncio.get_event_loop()
-    loop.create_task(run_bot())
-    app_flask.run(host="0.0.0.0", port=10000)
+=== Bot App ===
+
+bot_app = Application.builder().token(TOKEN).build()
+
+=== Handler /start ===
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE): await update.message.reply_text("✅ Bot aktif dan siap menerima perintah!")
+
+bot_app.add_handler(CommandHandler("start", start))
+
+=== Flask Webhook Endpoint ===
+
+@app.route("/webhook", methods=["POST"]) def webhook(): if request.method == "POST": update = Update.de_json(request.get_json(force=True), bot_app.bot) asyncio.create_task(bot_app.process_update(update)) return "ok"
+
+=== Run Flask + Nest Asyncio ===
+
+nest_asyncio.apply() if name == 'main': bot_app.initialize() app.run(host='0.0.0.0', port=10000)
+
