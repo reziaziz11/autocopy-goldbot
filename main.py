@@ -1,22 +1,18 @@
-import os
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    CallbackQueryHandler,
-)
+async def main():
+    bot_app = Application.builder().token(TOKEN).build()
 
-from handlers.start import start
-from handlers.menu import menu
-from handlers.help import help_command
-from handlers.callbacks import button_handler
+    # Handler
+    bot_app.add_handler(CommandHandler("start", start))
 
-async def build_bot():
-    token = os.getenv("BOT_TOKEN")
-    app = ApplicationBuilder().token(token).build()
+    # Initialize dan start webhook
+    await bot_app.initialize()
+    await bot_app.start()
+    await bot_app.updater.start_webhook(
+        listen="0.0.0.0",
+        port=int(os.environ.get("PORT", 10000)),
+        url_path=TOKEN,
+        webhook_url=f"{BASE_URL}/webhook"
+    )
+    print("✅ Webhook telah diset ke:", f"{BASE_URL}/webhook")
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("menu", menu))
-    app.add_handler(CommandHandler("help", help_command))
-    app.add_handler(CallbackQueryHandler(button_handler))
-
-    return app
+    await bot_app.updater.wait()
