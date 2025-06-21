@@ -24,7 +24,8 @@ bot_app.add_handler(CommandHandler("start", start))
 # === Webhook endpoint ===
 @flask_app.route("/webhook", methods=["POST"])
 async def webhook():
-    await bot_app.update_queue.put(Update.de_json(request.get_json(force=True), bot_app.bot))
+    update = Update.de_json(request.get_json(force=True), bot_app.bot)
+    await bot_app.update_queue.put(update)
     return "ok", 200
 
 # === Healthcheck ===
@@ -34,18 +35,17 @@ def index():
 
 # === Async main setup ===
 async def main():
-    await bot_app.bot.set_webhook(url=WEBHOOK_URL)
-    print(f"✅ Webhook set ke: {WEBHOOK_URL}")
     await bot_app.initialize()
     await bot_app.start()
-    await bot_app.updater.start_polling()
-    print("🚀 Bot polling aktif...")
+    await bot_app.bot.set_webhook(url=WEBHOOK_URL)
+    print(f"✅ Webhook di-set ke: {WEBHOOK_URL}")
+    print("🚀 Bot siap menerima update dari Telegram")
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
-    except RuntimeError as e:
-        # Untuk kompatibilitas Python > 3.11 (Render default)
+    except RuntimeError:
+        # Untuk Python 3.11+ default di Render
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(main())
