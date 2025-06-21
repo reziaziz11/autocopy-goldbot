@@ -1,1 +1,9 @@
-startCommand: "python app.py"
+services:
+  - type: web
+    name: djgoldbot
+    env: python
+    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt"
+    startCommand: "python app.py"
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
