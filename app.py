@@ -1,41 +1,48 @@
 import os
 import asyncio
 from dotenv import load_dotenv
-from flask import Flask
-from threading import Thread
-from main import build_bot
+from flask import Flask, request
+from telegram import Bot
+from telegram.ext import ApplicationBuilder, CommandHandler
 
+# === Load .env ===
 load_dotenv()
-
 TOKEN = os.getenv("TOKEN")
-WEBHOOK_URL = "https://djgoldbot.onrender.com/webhook"
+PORT = int(os.environ.get("PORT", 10000))
 
+# === Validasi Token ===
+if not TOKEN or not TOKEN.startswith("7524328423:"):
+    raise ValueError("❌ TOKEN tidak valid atau belum di-set! Harap isi variabel lingkungan TOKEN di Render.")
+
+# === Setup Telegram Bot ===
+bot_app = ApplicationBuilder().token(TOKEN).build()
+bot = Bot(token=TOKEN)
+
+# === Handler /start ===
+async def start(update, context):
+    await update.message.reply_text("✅ Bot aktif dan siap menerima perintah!")
+
+bot_app.add_handler(CommandHandler("start", start))
+
+# === Setup Flask (Render butuh endpoint) ===
 app = Flask(__name__)
 
-@app.route('/')
-def home():
-    return '✅ DJGOLD Bot is running!'
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    return "Webhook received!", 200
 
+# === Jalankan Webhook Telegram ===
 async def main():
-    bot_app = await build_bot()
-
-    # ✅ Jalankan bot dengan webhook_url (bukan webhook_path)
-    bot_app.run_webhook(
+    print("✅ Webhook telah diset ke: https://djgoldbot.onrender.com/webhook")
+    await bot_app.initialize()
+    await bot_app.start()
+    await bot_app.updater.start_webhook(
         listen="0.0.0.0",
-        port=int(os.environ.get("PORT", 10000)),
-        webhook_url=WEBHOOK_URL,
+        port=PORT,
+        url_path="webhook",
+        webhook_url="https://djgoldbot.onrender.com/webhook"
     )
-
-def run():
-    asyncio.run(main())
+    await bot_app.updater.idle()
 
 if __name__ == "__main__":
-    # ✅ Set webhook manual sebelum bot jalan
-    from telegram import Bot
-    bot = Bot(token=TOKEN)
-    bot.set_webhook(url=WEBHOOK_URL)
-    print(f"✅ Webhook telah diset ke: {WEBHOOK_URL}")
-
-    # ✅ Jalankan bot di thread terpisah
-    Thread(target=run).start()
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+    asyncio.run(main())
