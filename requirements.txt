@@ -1,9 +1,8 @@
-python-telegram-bot>=22.0
+python-telegram-bot[webhooks]>=22.0
 python-dotenv
 flask
 nest_asyncio
-
-# Tambahan recommended (tidak ganggu sistem utama):
-requests         # untuk API call ke broker atau Tripay
-pytz             # timezone-aware support (penting buat schedule & cut loss time)
-httpx            # alternatif ringan & async untuk HTTP
+gunicorn
+requests
+pytz
+httpx
