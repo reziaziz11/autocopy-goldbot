@@ -1,47 +1,34 @@
 import os
-from flask import Flask
-from dotenv import load_dotenv
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    CallbackQueryHandler,
-)
-import threading
 import asyncio
+from dotenv import load_dotenv
+from flask import Flask
+from threading import Thread
+from telegram.ext import ApplicationBuilder
+from handlers.start import start_handler  # pastikan handler ini udah benar dan ada
 
-# === Load Env ===
-load_dotenv()
-TOKEN = os.getenv("TOKEN")
-PORT = int(os.environ.get("PORT", 10000))
+import nest_asyncio
 
-# === Flask App ===
+# === Init Flask ===
 app_flask = Flask(__name__)
 
 @app_flask.route("/")
-def index():
-    return "✅ DJGOLD_BOT aktif!"
+def home():
+    return "✅ DJGOLD Bot is live and running!"
 
-# === Bot Handler Functions ===
-from handlers.start import start_handler
-from handlers.callbacks import button_handler  # pastikan file ini ada
+# === Load Token ===
+load_dotenv()
+TOKEN = os.getenv("TOKEN")
 
-# === Jalankan Bot ===
+# === Bot Handler ===
 async def run_bot():
     app = ApplicationBuilder().token(TOKEN).build()
-
-    # Tambah handler
-    app.add_handler(CommandHandler("start", start_handler))
-    app.add_handler(CallbackQueryHandler(button_handler))
-
+    app.add_handler(start_handler)
     print("🚀 Bot Telegram dijalankan via polling...")
     await app.run_polling()
 
-# === Main Start ===
+# === Run Both Flask & Telegram Bot Together ===
 if __name__ == "__main__":
-    # Jalankan Flask di thread terpisah
-    threading.Thread(target=app_flask.run, kwargs={"host": "0.0.0.0", "port": PORT}).start()
-
-    # Jalankan Telegram bot (tanpa asyncio.run)
+    nest_asyncio.apply()
     loop = asyncio.get_event_loop()
     loop.create_task(run_bot())
-    loop.run_forever()
+    app_flask.run(host="0.0.0.0", port=10000)
