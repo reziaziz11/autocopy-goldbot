@@ -1,5 +1,2 @@
-mv requirements.txt requirements-clean.txt
-git add requirements-clean.txt
-git rm requirements.txt
-git commit -m "clean build without legacy requirements"
-git push
+python-telegram-bot==20.7
+python-dotenv
