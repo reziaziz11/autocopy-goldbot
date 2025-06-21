@@ -1,22 +1,22 @@
 import os
-from dotenv import load_dotenv
-from telegram.ext import ApplicationBuilder, CommandHandler
-from handlers.start import start_handler
-from handlers.help import help_handler
-from handlers.menu import menu_handler
-import asyncio
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    CallbackQueryHandler,
+)
 
-load_dotenv()
-TOKEN = os.getenv("BOT_TOKEN")
+from handlers.start import start
+from handlers.menu import menu
+from handlers.help import help_command
+from handlers.callbacks import button_handler
 
-async def main():
-    app = ApplicationBuilder().token(TOKEN).build()
-    app.add_handler(CommandHandler("start", start_handler))
-    app.add_handler(CommandHandler("help", help_handler))
-    app.add_handler(CommandHandler("menu", menu_handler))
+async def build_bot():
+    token = os.getenv("BOT_TOKEN")
+    app = ApplicationBuilder().token(token).build()
 
-    print("✅ Bot aktif via polling")
-    await app.run_polling()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("menu", menu))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CallbackQueryHandler(button_handler))
 
-if __name__ == "__main__":
-    asyncio.run(main())
+    return app
