@@ -1,12 +1,9 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes
+from telegram import Update
+from telegram.ext import ContextTypes, CommandHandler
 
-async def menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton("📈 Mulai Copy Trading", callback_data="start_copy")],
-        [InlineKeyboardButton("🧾 Daftar Akun", callback_data="daftar")],
-        [InlineKeyboardButton("📊 Status Saya", callback_data="status")],
-        [InlineKeyboardButton("🆘 Bantuan", callback_data="bantuan")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("📍 Pilih menu di bawah ini untuk melanjutkan:", reply_markup=reply_markup)
+# Fungsi handler untuk perintah /menu
+async def handle_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("📋 Ini adalah menu utama. Pilih perintah yang ingin kamu gunakan:")
+
+# Export handler sebagai 'menu' agar bisa diimport di main.py
+menu = CommandHandler("menu", handle_menu)
