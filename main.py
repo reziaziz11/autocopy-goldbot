@@ -1,18 +1,26 @@
 async def main():
+    # Inisialisasi Application
     bot_app = Application.builder().token(TOKEN).build()
 
-    # Handler
+    # Tambahkan handler (contoh start)
     bot_app.add_handler(CommandHandler("start", start))
 
-    # Initialize dan start webhook
+    # WAJIB panggil initialize dulu
     await bot_app.initialize()
+
+    # Set webhook
+    await bot_app.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
+
+    # Mulai webhook
     await bot_app.start()
     await bot_app.updater.start_webhook(
         listen="0.0.0.0",
-        port=int(os.environ.get("PORT", 10000)),
-        url_path=TOKEN,
-        webhook_url=f"{BASE_URL}/webhook"
+        port=PORT,
+        url_path="/webhook",
+        webhook_url=f"{WEBHOOK_URL}/webhook",
     )
-    print("✅ Webhook telah diset ke:", f"{BASE_URL}/webhook")
 
+    print(f"✅ Webhook telah diset ke: {WEBHOOK_URL}/webhook")
+
+    # Tunggu sampai dihentikan
     await bot_app.updater.wait()
