@@ -1,48 +1,53 @@
+# app.py
+
 import os
 import asyncio
 from dotenv import load_dotenv
-from flask import Flask, request
-from telegram import Bot
-from telegram.ext import ApplicationBuilder, CommandHandler
+from flask import Flask
+from telegram import Update
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    ContextTypes,
+)
+from threading import Thread
 
 # === Load .env ===
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
-PORT = int(os.environ.get("PORT", 10000))
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
-# === Validasi Token ===
-if not TOKEN or not TOKEN.startswith("7524328423:"):
-    raise ValueError("❌ TOKEN tidak valid atau belum di-set! Harap isi variabel lingkungan TOKEN di Render.")
+if not TOKEN or not WEBHOOK_URL:
+    raise ValueError("❌ TOKEN atau WEBHOOK_URL belum diatur di Render!")
 
-# === Setup Telegram Bot ===
-bot_app = ApplicationBuilder().token(TOKEN).build()
-bot = Bot(token=TOKEN)
+# === Flask App ===
+flask_app = Flask(__name__)
 
-# === Handler /start ===
-async def start(update, context):
-    await update.message.reply_text("✅ Bot aktif dan siap menerima perintah!")
+@flask_app.route('/')
+def index():
+    return "✅ DJGOLD_BOT Aktif (Webhook)"
 
-bot_app.add_handler(CommandHandler("start", start))
+# === Telegram Handler ===
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("✅ DJGOLD_BOT aktif dan siap menerima perintah!")
 
-# === Setup Flask (Render butuh endpoint) ===
-app = Flask(__name__)
-
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    return "Webhook received!", 200
-
-# === Jalankan Webhook Telegram ===
+# === Bot App ===
 async def main():
-    print("✅ Webhook telah diset ke: https://djgoldbot.onrender.com/webhook")
-    await bot_app.initialize()
-    await bot_app.start()
-    await bot_app.updater.start_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        url_path="webhook",
-        webhook_url="https://djgoldbot.onrender.com/webhook"
-    )
-    await bot_app.updater.idle()
+    bot_app = ApplicationBuilder().token(TOKEN).build()
 
-if __name__ == "__main__":
+    bot_app.add_handler(CommandHandler("start", start))
+
+    # Set webhook
+    await bot_app.bot.set_webhook(WEBHOOK_URL)
+    print(f"✅ Webhook telah diset ke: {WEBHOOK_URL}")
+
+    # Start aplikasi Telegram
+    await bot_app.start()
+    await asyncio.Event().wait()
+
+def run_flask():
+    flask_app.run(host="0.0.0.0", port=10000)
+
+if __name__ == '__main__':
+    Thread(target=run_flask).start()
     asyncio.run(main())
