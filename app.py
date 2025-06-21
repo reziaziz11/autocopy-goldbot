@@ -1,53 +1,51 @@
-# app.py
-
 import os
 import asyncio
+from flask import Flask, request
 from dotenv import load_dotenv
-from flask import Flask
 from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    ContextTypes,
-)
-from threading import Thread
+from telegram.ext import Application, CommandHandler, ContextTypes
+import nest_asyncio
 
-# === Load .env ===
+# Load environment
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://djgoldbot.onrender.com")
+PORT = int(os.getenv("PORT", 10000))
 
-if not TOKEN or not WEBHOOK_URL:
-    raise ValueError("❌ TOKEN atau WEBHOOK_URL belum diatur di Render!")
+# Inisialisasi Flask
+app = Flask(__name__)
+nest_asyncio.apply()
 
-# === Flask App ===
-flask_app = Flask(__name__)
-
-@flask_app.route('/')
-def index():
-    return "✅ DJGOLD_BOT Aktif (Webhook)"
-
-# === Telegram Handler ===
+# Handler untuk command /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ DJGOLD_BOT aktif dan siap menerima perintah!")
+    await update.message.reply_text("✅ Bot aktif dan siap menerima perintah!")
 
-# === Bot App ===
+# Route untuk webhook
+@app.route("/webhook", methods=["POST"])
+async def webhook():
+    if request.method == "POST":
+        await bot_app.update_queue.put(Update.de_json(request.get_json(force=True), bot_app.bot))
+        return "OK", 200
+
+# Fungsi utama bot
 async def main():
-    bot_app = ApplicationBuilder().token(TOKEN).build()
-
+    global bot_app
+    bot_app = Application.builder().token(TOKEN).build()
     bot_app.add_handler(CommandHandler("start", start))
 
-    # Set webhook
-    await bot_app.bot.set_webhook(WEBHOOK_URL)
-    print(f"✅ Webhook telah diset ke: {WEBHOOK_URL}")
+    await bot_app.initialize()
+    await bot_app.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
 
-    # Start aplikasi Telegram
+    print(f"✅ Webhook telah diset ke: {WEBHOOK_URL}/webhook")
     await bot_app.start()
-    await asyncio.Event().wait()
+    await bot_app.updater.start_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        url_path="/webhook",
+        webhook_url=f"{WEBHOOK_URL}/webhook",
+    )
+    await bot_app.updater.wait()
 
-def run_flask():
-    flask_app.run(host="0.0.0.0", port=10000)
-
-if __name__ == '__main__':
-    Thread(target=run_flask).start()
+# Menjalankan bot di event loop
+if __name__ == "__main__":
     asyncio.run(main())
