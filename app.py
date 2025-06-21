@@ -1,17 +1,23 @@
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram.ext import ApplicationBuilder, CommandHandler
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
-TOKEN = os.getenv("BOT_TOKEN")
+TOKEN = os.getenv("TOKEN")
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Bot aktif gan 🚀")
+async def start(update, context):
+    await update.message.reply_text("Bot aktif, siap menerima perintah!")
 
-# Langsung jalanin app di luar fungsi async
-app = ApplicationBuilder().token(TOKEN).build()
-app.add_handler(CommandHandler("start", start))
+async def main():
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
 
-# Jalanin polling
-app.run_polling()
+    print("Bot sedang dijalankan...")
+    await app.run_polling()
+
+# GANTI INI (hapus baris ini kalau masih ada)
+# asyncio.run(main())
+
+# GUNAKAN INI:
+import asyncio
+asyncio.get_event_loop().run_until_complete(main())
