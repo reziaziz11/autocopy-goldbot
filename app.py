@@ -1,44 +1,27 @@
 import os
 from flask import Flask, request
 from telegram import Update
-from telegram.ext import (
-    Application,
-    ApplicationBuilder,
-    ContextTypes,
-    CommandHandler,
-)
-from bot.handlers import start
-from dotenv import load_dotenv
-import asyncio
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
 
-# Load .env
-load_dotenv()
-TOKEN = os.getenv("TOKEN")
+from bot.handlers import start_handler
 
-# Flask app
 app = Flask(__name__)
 
-# Init Telegram bot
-bot_app = ApplicationBuilder().token(TOKEN).build()
-bot_app.add_handler(CommandHandler("start", start))
+# === Setup Bot ===
+TOKEN = os.getenv("TOKEN")
+WEBHOOK_PATH = "/webhook"
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # misalnya https://djgoldbot.onrender.com/webhook
 
-@app.route("/")
+application = ApplicationBuilder().token(TOKEN).build()
+application.add_handler(CommandHandler("start", start_handler))
+
+@app.route("/", methods=["GET"])
 def home():
-    return "✅ DJGOLD_BOT aktif!"
+    return "✅ DJGOLD_BOT is running!"
 
-@app.route("/webhook", methods=["POST"])
+@app.route(WEBHOOK_PATH, methods=["POST"])
 async def webhook():
     if request.method == "POST":
-        update = Update.de_json(request.get_json(force=True), bot_app.bot)
-        await bot_app.process_update(update)
-        return "ok", 200
-
-# Jalankan Flask + Telegram polling di background
-def run():
-    loop = asyncio.get_event_loop()
-    loop.create_task(bot_app.initialize())
-    loop.create_task(bot_app.start())
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
-
-if __name__ == "__main__":
-    run()
+        update = Update.de_json(request.get_json(force=True), application.bot)
+        await application.process_update(update)
+        return "OK", 200
