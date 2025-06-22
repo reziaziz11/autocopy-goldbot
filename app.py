@@ -1,48 +1,46 @@
 import os
-import asyncio
-import nest_asyncio
-from dotenv import load_dotenv
+import logging
 from flask import Flask, request
+from dotenv import load_dotenv
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import (
+    ApplicationBuilder, CommandHandler,
+)
+import asyncio
 
-nest_asyncio.apply()
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
 WEBHOOK_PATH = "/webhook"
-WEBHOOK_URL = f"https://djgoldbot.onrender.com{WEBHOOK_PATH}"
 
 app = Flask(__name__)
-bot_app = Application.builder().token(TOKEN).build()
+
+# Bot init
+bot_app = ApplicationBuilder().token(TOKEN).build()
 
 # Handler /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("📬 Handler /start dipanggil—chat_id:", update.effective_chat.id)
-    await update.message.reply_text("✅ Bot aktif dan siap menerima perintah!")
+async def start(update: Update, context):
+    print("📬 Handler /start dipanggil — chat_id:", update.effective_chat.id)
+    await update.message.reply_text("✅ Bot aktif dan siap digunakan!")
 
 bot_app.add_handler(CommandHandler("start", start))
 
-@app.route("/")
-def index():
-    return "✅ DJGOLD BOT AKTIF"
-
+# Webhook endpoint
 @app.route(WEBHOOK_PATH, methods=["POST"])
 async def webhook():
     payload = request.get_json(force=True)
-    print("👉 Update diterima di Webhook:", payload)
+    print("👉 Dapat payload dari Telegram:", payload)
     update = Update.de_json(payload, bot_app.bot)
     await bot_app.process_update(update)
     return "OK", 200
 
-async def main():
-    print("🚀 Inisialisasi Bot & Webhook...")
-    await bot_app.initialize()
-    await bot_app.bot.set_webhook(url=WEBHOOK_URL)
-    print(f"✅ Webhook telah diset: {WEBHOOK_URL}")
-    await bot_app.start()
-    print("✅ Bot App berjalan")
-
+# Run Flask server
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.create_task(main())
-    app.run(host="0.0.0.0", port=10000)
+    import nest_asyncio
+    nest_asyncio.apply()
+    print("🚀 Starting Flask app + Telegram bot...")
+    bot_app.run_webhook(
+        listen="0.0.0.0",
+        port=int(os.environ.get("PORT", 10000)),
+        webhook_path=WEBHOOK_PATH,
+    )
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
