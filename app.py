@@ -1,57 +1,43 @@
-# app.py
-
 import os
-import logging
+from dotenv import load_dotenv
 from flask import Flask, request
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
-from telegram.ext import Dispatcher, CallbackContext
-from telegram.ext.webhookhandler import WebhookHandler
-from dotenv import load_dotenv
+from telegram.ext import Application, CommandHandler, ContextTypes
 
 load_dotenv()
 
 TOKEN = os.getenv("TOKEN")
-WEBHOOK_PATH = "/webhook"
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # ex: https://djgoldbot.onrender.com/webhook
+WEBHOOK_PATH = f"/webhook"
+BOT_URL = os.getenv("BOT_URL")  # contoh: https://djgoldbot.onrender.com
 
-app = Flask(__name__)
+# === Inisialisasi Flask ===
+flask_app = Flask(__name__)
 
-# Logger (penting buat debugging)
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# === Inisialisasi Telegram Bot ===
+application = Application.builder().token(TOKEN).build()
 
-# === Handlers ===
+# === Command Handler ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ DJGOLD_BOT aktif dan siap menerima perintah!")
-
-async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Perintah tidak dikenali.")
-
-# === Setup Bot Telegram ===
-application = ApplicationBuilder().token(TOKEN).build()
+    await update.message.reply_text("✅ Bot aktif dan siap menerima perintah!")
 
 application.add_handler(CommandHandler("start", start))
-application.add_handler(MessageHandler(filters.COMMAND, unknown))
 
-# === Flask route ===
-@app.route("/", methods=["GET"])
-def home():
-    return "✅ Bot aktif di server", 200
-
-@app.route(WEBHOOK_PATH, methods=["POST"])
-def webhook():
-    """Handle webhook from Telegram"""
+# === Route Webhook ===
+@flask_app.post(WEBHOOK_PATH)
+async def webhook_handler():
     if request.method == "POST":
-        update = Update.de_json(request.get_json(force=True), application.bot)
-        application.update_queue.put_nowait(update)
-        return "OK", 200
-    return "Method Not Allowed", 405
+        await application.update_queue.put(Update.de_json(request.get_json(force=True), application.bot))
+        return "OK"
+    return "Invalid method", 405
 
-# === Webhook Setup (Run once) ===
-@app.before_first_request
-def setup_webhook():
-    from telegram import Bot
-    bot = Bot(token=TOKEN)
-    bot.set_webhook(f"{WEBHOOK_URL}{WEBHOOK_PATH}")
-    logger.info(f"Webhook disetel ke {WEBHOOK_URL}{WEBHOOK_PATH}")
+# === WSGI untuk Gunicorn ===
+app = flask_app
+
+# === Set Webhook saat start ===
+import asyncio
+async def set_webhook():
+    url = f"{BOT_URL}{WEBHOOK_PATH}"
+    await application.bot.set_webhook(url)
+    print(f"✅ Webhook set ke: {url}")
+
+asyncio.get_event_loop().run_until_complete(set_webhook())
