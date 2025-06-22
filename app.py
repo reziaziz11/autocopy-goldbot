@@ -1,47 +1,46 @@
 import os
 import logging
+from dotenv import load_dotenv
 from flask import Flask, request
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler
-from dotenv import load_dotenv
-import nest_asyncio
-import asyncio
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
+# === Load Token dan Init ===
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
+WEBHOOK_PATH = "/webhook"
+app = Flask(__name__)
 
-# Logging supaya error kelihatan
+# === Logging ===
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
-nest_asyncio.apply()
-
+# === Bot Setup ===
 bot_app = ApplicationBuilder().token(TOKEN).build()
 
-# Handler /start
-async def start(update: Update, context):
-    try:
-        chat_id = update.effective_chat.id
-        logger.info(f"📬 Handler /start dipanggil — chat_id: {chat_id}")
-        await update.message.reply_text("✅ Bot aktif dan siap digunakan!")
-    except Exception as e:
-        logger.error(f"❌ Gagal handle /start: {e}")
+# === Command Handler ===
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("✅ Bot aktif dan siap digunakan!")
 
 bot_app.add_handler(CommandHandler("start", start))
 
-# Endpoint webhook
-@app.route("/webhook", methods=["POST"])
-async def webhook():
+# === Webhook Endpoint ===
+@app.post(WEBHOOK_PATH)
+async def telegram_webhook():
+    """Endpoint utama yang diakses Telegram saat kirim update"""
     try:
-        payload = request.get_json(force=True)
-        logger.info(f"👉 Dapat payload dari Telegram: {payload}")
-        update = Update.de_json(payload, bot_app.bot)
-        await bot_app.process_update(update)
+        update = Update.de_json(request.get_json(force=True), bot_app.bot)
+        await bot_app.update_queue.put(update)
+        return "ok"
     except Exception as e:
-        logger.error(f"❌ Gagal proses webhook: {e}")
-    return "OK", 200
+        logger.error(f"Webhook error: {e}")
+        return "error", 500
 
+# === Start Flask Server ===
 if __name__ == "__main__":
+    import nest_asyncio
+    import asyncio
+    nest_asyncio.apply()
     logger.info("🚀 Bot dan Flask server mulai jalan...")
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+    asyncio.get_event_loop().run_until_complete(bot_app.initialize())
+    app.run(host="0.0.0.0", port=10000)
