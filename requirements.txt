@@ -1,1 +1,8 @@
-
+python-telegram-bot[webhooks]>=22.0
+python-dotenv
+flask
+nest_asyncio
+gunicorn
+requests
+pytz
+httpx
