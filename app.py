@@ -3,11 +3,10 @@ import asyncio
 from dotenv import load_dotenv
 from flask import Flask, request
 from telegram import Update
-from telegram.ext import (
-    Application, ApplicationBuilder, CommandHandler, ContextTypes
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import nest_asyncio
 
+# Setup
 nest_asyncio.apply()
 load_dotenv()
 
@@ -15,32 +14,30 @@ TOKEN = os.getenv("TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 # Inisialisasi Telegram bot
-app_telegram = ApplicationBuilder().token(TOKEN).build()
+application = ApplicationBuilder().token(TOKEN).build()
 
 # Handler /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ Bot aktif dan siap menerima perintah!")
 
-app_telegram.add_handler(CommandHandler("start", start))
+application.add_handler(CommandHandler("start", start))
 
-# Setup Flask
-flask_app = Flask(__name__)
+# Set Webhook
+async def set_webhook():
+    await application.bot.set_webhook(WEBHOOK_URL)
 
-@flask_app.get("/")
-def index():
-    return "DJGOLD_BOT aktif..."
+asyncio.get_event_loop().run_until_complete(set_webhook())
 
-@flask_app.post("/webhook")
-async def telegram_webhook():
-    update = Update.de_json(request.get_json(force=True), app_telegram.bot)
-    await app_telegram.process_update(update)
-    return "OK", 200
+# Flask App (Wajib pakai nama "app" untuk Render/gunicorn)
+app = Flask(__name__)
 
-# Setup dan jalankan Webhook dengan cara async
-async def main():
-    await app_telegram.bot.set_webhook(WEBHOOK_URL)
-    print(f"✅ Webhook berhasil diset ke: {WEBHOOK_URL}")
+@app.route("/", methods=["GET"])
+def home():
+    return "Bot is running..."
 
-if __name__ == "__main__":
-    asyncio.run(main())
-    flask_app.run(port=10000)
+@app.route("/webhook", methods=["POST"])
+async def webhook():
+    if request.method == "POST":
+        update = Update.de_json(request.get_json(force=True), application.bot)
+        await application.process_update(update)
+        return "OK", 200
