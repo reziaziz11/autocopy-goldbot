@@ -1,42 +1,24 @@
 import os
-import asyncio
-import nest_asyncio
-from dotenv import load_dotenv
 from flask import Flask, request
+from dotenv import load_dotenv
 from telegram import Update
-from telegram.ext import ApplicationBuilder
-
-# === INIT ===
-load_dotenv()
-nest_asyncio.apply()
-app = Flask(__name__)
-
-# === BOT ===
-TOKEN = os.getenv("TOKEN")
-application = ApplicationBuilder().token(TOKEN).build()
-
-# === HANDLER STAGE 2 ===
+from telegram.ext import Application, ContextTypes, CommandHandler
 from stage2.welcome import welcome_handler
-application.add_handler(welcome_handler)
 
-# === WEBHOOK ENDPOINT ===
-@app.post("/webhook")
-async def webhook():
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    await application.update_queue.put(update)
-    return "ok", 200
+load_dotenv()
+TOKEN = os.getenv("TOKEN")
+
+app = Flask(__name__)
+application = Application.builder().token(TOKEN).build()
+application.add_handler(welcome_handler)
 
 @app.route('/')
 def index():
-    return '✅ DJGOLD_BOT aktif', 200
+    return "✅ DJGOLD_BOT aktif"
 
-# === JALANKAN BOT DI BACKGROUND ===
-async def run_bot():
-    await application.initialize()
-    await application.start()
-
-# === MAIN RUN ===
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.create_task(run_bot())
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+@app.route('/webhook', methods=['POST'])
+async def webhook():
+    if request.method == 'POST':
+        update = Update.de_json(request.get_json(force=True), application.bot)
+        await application.process_update(update)
+        return 'ok'
