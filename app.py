@@ -1,50 +1,52 @@
 import os
+import asyncio
 from flask import Flask, request
 from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder, CommandHandler, ContextTypes
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from dotenv import load_dotenv
-import asyncio
 
 load_dotenv()
+
 TOKEN = os.getenv("TOKEN")
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "djgoldbot123")
+RENDER_HOST = os.getenv("RENDER_EXTERNAL_HOSTNAME", "localhost")
 
 app = Flask(__name__)
-loop = asyncio.get_event_loop()
 application = ApplicationBuilder().token(TOKEN).build()
 
-# === Handler Bot ===
+# === Telegram Bot Command ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ Bot aktif dan siap menerima perintah!")
 
 application.add_handler(CommandHandler("start", start))
 
-# === Webhook route ===
-@app.route(f"/webhook/{WEBHOOK_SECRET}", methods=["POST"])
-async def webhook_handler():
-    if request.method == "POST":
-        await application.update_queue.put(Update.de_json(request.get_json(force=True), application.bot))
-        return "OK", 200
+@app.route("/")
+def home():
+    return "DJGOLD BOT is running"
 
-# === Manual webhook trigger route ===
+@app.route(f"/webhook/{WEBHOOK_SECRET}", methods=["POST"])
+async def webhook():
+    data = request.get_json(force=True)
+    update = Update.de_json(data, application.bot)
+    await application.update_queue.put(update)
+    return "ok"
+
 @app.route("/setwebhook")
 async def set_webhook():
-    url = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/webhook/{WEBHOOK_SECRET}"
-    await application.bot.set_webhook(url=url)
-    return f"✅ Webhook set to: {url}"
+    webhook_url = f"https://{RENDER_HOST}/webhook/{WEBHOOK_SECRET}"
+    await application.bot.set_webhook(webhook_url)
+    return f"✅ Webhook set to: {webhook_url}"
 
-@app.route("/")
-def index():
-    return "DJGOLD BOT is alive"
-
-# === Start bot background loop ===
-async def startup():
+async def run():
     await application.initialize()
     await application.start()
-loop.create_task(startup())
+    # Jangan stop application di sini
+    import hypercorn.asyncio
+    from hypercorn.config import Config
 
-# === Run Flask ===
+    config = Config()
+    config.bind = ["0.0.0.0:10000"]
+    await hypercorn.asyncio.serve(app, config)
+
 if __name__ == "__main__":
-    app.run()
+    asyncio.run(run())
