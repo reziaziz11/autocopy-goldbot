@@ -5,5 +5,4 @@ nest_asyncio
 requests
 pytz
 httpx
-gunicorn
 hypercorn
