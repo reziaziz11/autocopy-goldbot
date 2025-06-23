@@ -2,7 +2,8 @@ python-telegram-bot[webhooks]>=22.0
 python-dotenv
 flask[async]
 nest_asyncio
-gunicorn
 requests
 pytz
 httpx
+gunicorn
+hypercorn
