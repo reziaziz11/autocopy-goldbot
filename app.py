@@ -1,43 +1,35 @@
 import os
-import asyncio
+import logging
 from dotenv import load_dotenv
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-import nest_asyncio
 
-# Setup
-nest_asyncio.apply()
 load_dotenv()
 
 TOKEN = os.getenv("TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
-# Inisialisasi Telegram bot
-application = ApplicationBuilder().token(TOKEN).build()
+# Logging
+logging.basicConfig(level=logging.INFO)
 
-# Handler /start
+# === BOT SETUP ===
+app_bot = ApplicationBuilder().token(TOKEN).build()
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ Bot aktif dan siap menerima perintah!")
 
-application.add_handler(CommandHandler("start", start))
+app_bot.add_handler(CommandHandler("start", start))
 
-# Set Webhook
-async def set_webhook():
-    await application.bot.set_webhook(WEBHOOK_URL)
-
-asyncio.get_event_loop().run_until_complete(set_webhook())
-
-# Flask App (Wajib pakai nama "app" untuk Render/gunicorn)
+# === FLASK SETUP ===
 app = Flask(__name__)
 
-@app.route("/", methods=["GET"])
+@app.route('/')
 def home():
-    return "Bot is running..."
+    return "DJGOLD BOT AKTIF ✅"
 
-@app.route("/webhook", methods=["POST"])
+@app.route('/webhook', methods=["POST"])
 async def webhook():
     if request.method == "POST":
-        update = Update.de_json(request.get_json(force=True), application.bot)
-        await application.process_update(update)
-        return "OK", 200
+        await app_bot.update_queue.put(Update.de_json(request.get_json(force=True), app_bot.bot))
+        return "OK"
