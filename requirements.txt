@@ -1,6 +1,6 @@
 python-telegram-bot[webhooks]>=22.0
 python-dotenv
-flask
+flask[async]
 nest_asyncio
 gunicorn
 requests
