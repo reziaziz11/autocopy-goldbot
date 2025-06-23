@@ -1,28 +1,42 @@
 import os
+import asyncio
+import nest_asyncio
+from dotenv import load_dotenv
 from flask import Flask, request
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
+from telegram.ext import ApplicationBuilder
 
-from stage2.welcome import start_handler  # Tahap 2 import
-
+# === INIT ===
+load_dotenv()
+nest_asyncio.apply()
 app = Flask(__name__)
 
-# === Setup Bot ===
+# === BOT ===
 TOKEN = os.getenv("TOKEN")
-WEBHOOK_PATH = "/webhook"
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")  # misalnya https://djgoldbot.onrender.com/webhook
-
 application = ApplicationBuilder().token(TOKEN).build()
-application.add_handler(CommandHandler("start", start_handler))
 
-@app.route("/", methods=["GET"])
-def home():
-    return "✅ DJGOLD_BOT is running!"
+# === HANDLER STAGE 2 ===
+from stage2.welcome import welcome_handler
+application.add_handler(welcome_handler)
 
-@app.route(WEBHOOK_PATH, methods=["POST"])
+# === WEBHOOK ENDPOINT ===
+@app.post("/webhook")
 async def webhook():
-    if request.method == "POST":
-        update = Update.de_json(request.get_json(force=True), application.bot)
-        await application.initialize()  # WAJIB agar bisa proses update
-        await application.process_update(update)
-        return "OK", 200
+    update = Update.de_json(request.get_json(force=True), application.bot)
+    await application.update_queue.put(update)
+    return "ok", 200
+
+@app.route('/')
+def index():
+    return '✅ DJGOLD_BOT aktif', 200
+
+# === JALANKAN BOT DI BACKGROUND ===
+async def run_bot():
+    await application.initialize()
+    await application.start()
+
+# === MAIN RUN ===
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    loop.create_task(run_bot())
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
