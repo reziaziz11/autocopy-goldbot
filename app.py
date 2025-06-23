@@ -1,24 +1,35 @@
 import os
 from flask import Flask, request
-from dotenv import load_dotenv
 from telegram import Update
-from telegram.ext import Application, ContextTypes, CommandHandler
-from stage2.welcome import welcome_handler
+from telegram.ext import ApplicationBuilder, CommandHandler
 
-load_dotenv()
-TOKEN = os.getenv("TOKEN")
+from bot.handlers import start_handler
 
 app = Flask(__name__)
-application = Application.builder().token(TOKEN).build()
-application.add_handler(welcome_handler)
 
-@app.route('/')
-def index():
-    return "✅ DJGOLD_BOT aktif"
+TOKEN = os.getenv("TOKEN")
+WEBHOOK_PATH = "/webhook"
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
-@app.route('/webhook', methods=['POST'])
-async def webhook():
-    if request.method == 'POST':
-        update = Update.de_json(request.get_json(force=True), application.bot)
-        await application.process_update(update)
-        return 'ok'
+# Setup Bot
+application = ApplicationBuilder().token(TOKEN).build()
+application.add_handler(CommandHandler("start", start_handler))
+application.initialize()  # jangan lupa initialize
+
+# Set webhook saat startup
+@app.before_first_request
+def set_webhook():
+    application.bot.set_webhook(WEBHOOK_URL)
+
+@app.route("/", methods=["GET"])
+def home():
+    return "✅ DJGOLD_BOT is running!"
+
+@app.route(WEBHOOK_PATH, methods=["POST"])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), application.bot)
+    application.process_update(update)  # sync processing
+    return "OK", 200
+
+if __name__ == "__main__":
+    app.run()
