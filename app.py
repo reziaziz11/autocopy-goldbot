@@ -1,4 +1,5 @@
 import os
+import asyncio
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler
@@ -20,8 +21,8 @@ def home():
     return "✅ DJGOLD_BOT is running!"
 
 @app.route(WEBHOOK_PATH, methods=["POST"])
-async def webhook():
+def webhook():
     if request.method == "POST":
         update = Update.de_json(request.get_json(force=True), application.bot)
-        await application.process_update(update)
+        asyncio.run(application.process_update(update))
         return "OK", 200
