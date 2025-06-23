@@ -28,11 +28,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 application = ApplicationBuilder().token(TOKEN).build()
 application.add_handler(CommandHandler("start", start))
 
-# Webhook endpoint
+# Webhook endpoint FIXED
 @app.route(f"/webhook/{WEBHOOK_SECRET}", methods=["POST"])
-async def webhook_handler():
+def webhook_handler():
     update = Update.de_json(request.get_json(force=True), application.bot)
-    await application.update_queue.put(update)
+    asyncio.run_coroutine_threadsafe(
+        application.update_queue.put(update), application.bot.loop
+    )
     return "OK", 200
 
 # Bot runner
