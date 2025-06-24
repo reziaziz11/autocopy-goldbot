@@ -5,32 +5,46 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from threading import Thread
 
+# Load ENV
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "djgoldwebhook")
 WEBHOOK_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/webhook/{WEBHOOK_SECRET}"
 
+# Logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
 
+# Flask App
 app = Flask(__name__)
 
+# Telegram Bot
+application = ApplicationBuilder().token(TOKEN).build()
+
+# Bot Command Handler
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ Bot aktif dan siap menerima perintah!")
 
-application = ApplicationBuilder().token(TOKEN).build()
 application.add_handler(CommandHandler("start", start))
 
+# Webhook Handler - ASYNC FIXED
 @app.route(f"/webhook/{WEBHOOK_SECRET}", methods=["POST"])
-def webhook_handler():
+async def webhook_handler():
     try:
-        payload = request.get_json(force=True)
+        payload = await request.get_json(force=True)
+        logging.debug(f"📥 Incoming update: {payload}")
         update = Update.de_json(payload, application.bot)
-        application.update_queue.put_nowait(update)
+        await application.update_queue.put(update)
         return jsonify({"status": "ok"}), 200
     except Exception as e:
-        logging.exception("Error in webhook")
-        return jsonify({"error": "internal server error"}), 500
+        logging.exception("❌ Error in webhook_handler:")
+        return jsonify({"error": str(e)}), 500
 
+# Index route
+@app.route("/")
+def index():
+    return "DJGOLD Bot is running."
+
+# Bot Runner
 def run_bot():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -40,10 +54,7 @@ def run_bot():
     logging.info("🚀 Bot & webhook aktif di %s", WEBHOOK_URL)
     loop.run_forever()
 
-@app.route("/")
-def index():
-    return "DJGOLD Bot is running."
-
+# Start server
 if __name__ == "__main__":
     Thread(target=run_bot, daemon=True).start()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
