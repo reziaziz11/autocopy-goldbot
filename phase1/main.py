@@ -6,20 +6,23 @@ app = Flask(__name__)
 TOKEN = "7524328423:AAFPrLxZtxnyyGmmguhc5KU_e524xnq4thI"
 URL = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
-@app.route("/", methods=["GET"])
-def index():
-    return "Bot Aktif (Phase 1)"
+@app.route("/")
+def home():
+    return "Bot aktif."
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
-    message = data.get("message")
-    if message:
-        chat_id = message["chat"]["id"]
-        text = message.get("text", "")
-        payload = {
+    print("DATA MASUK:", data)  # Debug log akan tampil di Render Logs
+
+    if "message" in data:
+        chat_id = data["message"]["chat"]["id"]
+        text = data["message"].get("text", "")
+        reply = f"📩 Kamu mengirim: {text}"
+
+        requests.post(URL, json={
             "chat_id": chat_id,
-            "text": f"Halo! Kamu mengirim: {text}"
-        }
-        requests.post(URL, json=payload)
+            "text": reply
+        })
+
     return {"ok": True}
