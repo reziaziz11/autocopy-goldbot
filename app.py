@@ -5,56 +5,54 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from threading import Thread
 
-# Load ENV
+# === Load Token & Config ===
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "djgoldwebhook")
 WEBHOOK_URL = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/webhook/{WEBHOOK_SECRET}"
 
-# Logging
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(levelname)s %(message)s')
+# === Logging ===
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
-# Flask App
+# === Flask App ===
 app = Flask(__name__)
 
-# Telegram Bot
-application = ApplicationBuilder().token(TOKEN).build()
-
-# Bot Command Handler
+# === Bot Handler ===
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ Bot aktif dan siap menerima perintah!")
 
+# === Bot Application ===
+application = ApplicationBuilder().token(TOKEN).build()
 application.add_handler(CommandHandler("start", start))
 
-# Webhook Handler - ASYNC FIXED
+# === Webhook Handler ===
 @app.route(f"/webhook/{WEBHOOK_SECRET}", methods=["POST"])
-async def webhook_handler():
+def webhook_handler():
     try:
-        payload = await request.get_json(force=True)
-        logging.debug(f"📥 Incoming update: {payload}")
+        payload = request.get_json(force=True)
         update = Update.de_json(payload, application.bot)
-        await application.update_queue.put(update)
+        asyncio.run(application.process_update(update))  # Penting: trigger handler seperti /start
         return jsonify({"status": "ok"}), 200
     except Exception as e:
-        logging.exception("❌ Error in webhook_handler:")
+        logging.exception("❌ Error in webhook handler")
         return jsonify({"error": str(e)}), 500
 
-# Index route
-@app.route("/")
-def index():
-    return "DJGOLD Bot is running."
-
-# Bot Runner
+# === Run Bot Async (webhook mode) ===
 def run_bot():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     loop.run_until_complete(application.initialize())
     loop.run_until_complete(application.bot.set_webhook(WEBHOOK_URL))
     loop.run_until_complete(application.start())
-    logging.info("🚀 Bot & webhook aktif di %s", WEBHOOK_URL)
+    logging.info(f"🚀 Bot & webhook aktif di {WEBHOOK_URL}")
     loop.run_forever()
 
-# Start server
+# === Root Route for Health Check ===
+@app.route("/")
+def index():
+    return "✅ DJGOLD Bot is running."
+
+# === Start Everything ===
 if __name__ == "__main__":
     Thread(target=run_bot, daemon=True).start()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
