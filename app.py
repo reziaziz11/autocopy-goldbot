@@ -28,14 +28,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 application = ApplicationBuilder().token(TOKEN).build()
 application.add_handler(CommandHandler("start", start))
 
-# Webhook endpoint FIXED
+# Webhook endpoint - FIX: pakai sync handler untuk Flask
 @app.route(f"/webhook/{WEBHOOK_SECRET}", methods=["POST"])
 def webhook_handler():
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    asyncio.run_coroutine_threadsafe(
-        application.update_queue.put(update), application.bot.loop
-    )
-    return "OK", 200
+    try:
+        update = Update.de_json(request.get_json(force=True), application.bot)
+        asyncio.run(application.update_queue.put(update))
+        return "OK", 200
+    except Exception as e:
+        logging.error(f"❌ Webhook error: {e}")
+        return "Error", 500
 
 # Bot runner
 async def main():
@@ -44,7 +46,7 @@ async def main():
     await application.start()
     logging.info(f"🚀 Bot & webhook aktif di {WEBHOOK_URL}")
 
-# Run bot on separate thread
+# Jalankan bot di thread terpisah
 def run_bot():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -55,6 +57,7 @@ def run_bot():
 def index():
     return "DJGOLD Bot is running."
 
+# Start Flask & Bot
 if __name__ == "__main__":
     Thread(target=run_bot).start()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
