@@ -3,7 +3,7 @@ import requests
 
 app = Flask(__name__)
 
-TOKEN = "ISI_DENGAN_TOKEN_BOT_KAMU"
+TOKEN = "7524328423:AAFPrLxZtxnyyGmmguhc5KU_e524xnq4thI"
 URL = f"https://api.telegram.org/bot{TOKEN}"
 
 @app.route("/")
@@ -13,9 +13,9 @@ def home():
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
-    if "message" in data:
+    if data.get("message"):
         chat_id = data["message"]["chat"]["id"]
-        text = data["message"]["text"]
+        text = data["message"].get("text", "")
         requests.post(f"{URL}/sendMessage", json={
             "chat_id": chat_id,
             "text": f"Halo! Kamu mengirim: {text}"
