@@ -1,43 +1,38 @@
+import os
+from dotenv import load_dotenv
 from flask import Flask, request
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
-from dotenv import load_dotenv
-import os
-import asyncio
 
-# Load env
+# Load token dari .env / render environment
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
 
-# Flask app
-flask_app = Flask(__name__)
+# Cek apakah token valid
+if not TOKEN:
+    raise Exception("❌ TOKEN Telegram tidak ditemukan. Cek .env atau Render Environment.")
 
-# Telegram app
+# Inisialisasi Flask dan Telegram bot
+app = Flask(__name__)
 bot_app = Application.builder().token(TOKEN).build()
 
-# Handler /start
+# Command handler contoh
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Halo! Bot DJGOLD aktif dan siap digunakan.")
+    await update.message.reply_text("Halo! Bot aktif sukses!")
 
-# Register handler
 bot_app.add_handler(CommandHandler("start", start))
 
-# Endpoint root
-@flask_app.route("/", methods=["GET"])
-def index():
-    return "Bot DJGOLD aktif via Flask!"
-
-# Webhook endpoint
-@flask_app.route("/webhook", methods=["POST"])
-async def webhook():
+# Endpoint webhook
+@app.route("/webhook", methods=["POST"])
+def webhook():
     update = Update.de_json(request.get_json(force=True), bot_app.bot)
-    await bot_app.process_update(update)
-    return "OK", 200
+    bot_app.update_queue.put(update)
+    return "OK"
 
-# Start Flask + webhook
+# Run bot
 if __name__ == "__main__":
     bot_app.run_webhook(
         listen="0.0.0.0",
         port=int(os.environ.get("PORT", 10000)),
-        webhook_url="https://djgoldbot.onrender.com/webhook"
+        webhook_url=os.getenv("WEBHOOK_URL")  # Jangan lupa set ini juga di Render
     )
