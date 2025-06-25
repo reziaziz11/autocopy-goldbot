@@ -1,2 +1,9 @@
-build:
-  pythonVersion: 3.11.8
+services:
+  - type: web
+    name: djgoldbot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn phase2.main:app
+    envVars:
+      - key: BOT_TOKEN
+        sync: false  # manual atur di dashboard
