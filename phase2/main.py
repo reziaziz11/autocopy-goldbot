@@ -4,9 +4,9 @@ from flask import Flask, request
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
-    raise ValueError("BOT_TOKEN belum di-set")
+    raise Exception("BOT_TOKEN belum di-set!")
 
 app = Flask(__name__)
 application = Application.builder().token(BOT_TOKEN).build()
@@ -17,15 +17,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 application.add_handler(CommandHandler("start", start))
 
-# Endpoint untuk menerima webhook
+# Webhook endpoint
 @app.route('/webhook', methods=['POST'])
-async def webhook():
-    data = request.get_json(force=True)
-    update = Update.de_json(data, application.bot)
+async def handle_webhook():
+    update = Update.de_json(request.get_json(force=True), application.bot)
     await application.process_update(update)
     return "ok"
 
-# Inisialisasi bot saat pertama kali jalan
+# Jalankan application saat Flask mulai
 @app.before_first_request
-def activate_bot():
+def start_bot():
     asyncio.create_task(application.initialize())
