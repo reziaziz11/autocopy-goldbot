@@ -1,60 +1,51 @@
-from flask import Flask, request
-from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    filters,
-    CallbackContext,
-)
 import os
-import logging
+from flask import Flask, request
+from telegram import Update
+from telegram.ext import Application, CommandHandler, ContextTypes
 
-# Inisialisasi Flask
-app = Flask(__name__)
-
-# Logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-
-# Ambil token dari environment variable
+# Ambil variabel environment
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+
 if not BOT_TOKEN:
     raise ValueError("BOT_TOKEN belum diatur di environment")
 
-# Inisialisasi Bot
-application = Application.builder().token(BOT_TOKEN).build()
+# Inisialisasi bot
+app = Flask(__name__)
+telegram_app = Application.builder().token(BOT_TOKEN).build()
 
-# Handler /start
-async def start(update: Update, context: CallbackContext):
-    keyboard = [["💰 Daftar Akun", "📊 Statistik"], ["📞 Bantuan"]]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    await update.message.reply_text("Selamat datang di DJGOLD Bot! 🎯", reply_markup=reply_markup)
+# ===== HANDLER =====
+async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Halo! Selamat datang di DJGOLD BOT 🚀\n\nKetik /menu untuk mulai.")
 
-# Handler default
-async def reply_text(update: Update, context: CallbackContext):
-    await update.message.reply_text("Perintah tidak dikenali. Ketik /start untuk memulai.")
+telegram_app.add_handler(CommandHandler("start", start_handler))
 
-# Pasang handler
-application.add_handler(CommandHandler("start", start))
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply_text))
+# ===== ROUTE FLASK =====
+@app.route("/")
+def index():
+    return "DJGOLD BOT aktif ✅", 200
 
-# Webhook endpoint
 @app.route("/webhook", methods=["POST"])
 def webhook():
     if request.method == "POST":
-        update = Update.de_json(request.get_json(force=True), application.bot)
-        application.update_queue.put_nowait(update)
-        return "ok", 200
+        telegram_app.update_queue.put_nowait(Update.de_json(request.get_json(force=True), telegram_app.bot))
+        return "OK", 200
+    return "Method not allowed", 405
 
-# Cek status
-@app.route("/", methods=["GET"])
-def index():
-    return "DJGOLD Bot aktif 🟢", 200
+# ===== SETUP WEBHOOK SAAT APLIKASI MULAI =====
+@app.before_first_request
+def activate_webhook():
+    if WEBHOOK_URL:
+        telegram_app.bot.set_webhook(WEBHOOK_URL)
+        print("Webhook diatur ke:", WEBHOOK_URL)
 
-# Run lokal (opsional, untuk development)
+# ===== JALANKAN TELEGRAM BOT DI BACKGROUND =====
+import threading
+def run_telegram_polling():
+    telegram_app.run_polling(allowed_updates=Update.ALL_TYPES)
+
+threading.Thread(target=run_telegram_polling, daemon=True).start()
+
+# ===== JALANKAN FLASK APP =====
 if __name__ == "__main__":
-    print("Menjalankan DJGOLD bot secara lokal...")
-    application.run_polling()
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
