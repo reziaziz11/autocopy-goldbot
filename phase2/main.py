@@ -1,46 +1,36 @@
 import os
 from flask import Flask, request
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import (
+    Application, CommandHandler, ContextTypes
+)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# Aplikasi Flask untuk webhook
 app = Flask(__name__)
 
-# Aplikasi Telegram Bot
+# Buat aplikasi Telegram bot
 application = Application.builder().token(BOT_TOKEN).build()
 
-
-@app.route('/webhook', methods=['POST'])
-async def webhook():
-    if request.method == "POST":
-        data = request.get_json(force=True)
-        update = Update.de_json(data, application.bot)
-        await application.process_update(update)
-        return 'OK'
-    return 'Method Not Allowed', 405
-
-
-# Command /start
+# Handler command /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Halo! Bot aktif dan siap jalan via webhook 🚀")
+    await update.message.reply_text("Halo! Bot DJGOLD aktif via webhook ✅")
 
-
-# Tambahkan handler /start
 application.add_handler(CommandHandler("start", start))
 
+# Endpoint webhook
+@app.route('/webhook', methods=["POST"])
+async def telegram_webhook():
+    data = request.get_json(force=True)
+    update = Update.de_json(data, application.bot)
+    await application.process_update(update)
+    return "OK"
 
-# Jalankan Flask dan inisialisasi bot Telegram
-if __name__ == "__main__":
+# Flask app agar dikenali Gunicorn
+app.wsgi_app = app
+
+# Jangan lupa initialize bot saat start
+@app.before_first_request
+def init_telegram():
     import asyncio
-    from threading import Thread
-
-    def run_flask():
-        app.run(host="0.0.0.0", port=10000)
-
-    # Mulai Flask dalam thread terpisah
-    Thread(target=run_flask).start()
-
-    # Jalankan Telegram application tanpa polling
-    asyncio.run(application.initialize())
+    asyncio.create_task(application.initialize())
