@@ -1,46 +1,56 @@
-from flask import Flask, request
-import requests
-import json
+from flask import Flask, request import requests import json from telegram import Update, ReplyKeyboardMarkup from telegram.ext import CommandHandler, MessageHandler, Filters, ConversationHandler, CallbackContext, Dispatcher
 
-app = Flask(__name__)
+app = Flask(name)
 
-BOT_TOKEN = "7524328423:AAFPrLxZtxnyyGmmguhc5KU_e524xnq4thI"
+--- Konstanta state ---
 
-def send_message(chat_id, text, reply_markup=None):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "HTML"
-    }
-    if reply_markup:
-        payload["reply_markup"] = json.dumps(reply_markup)
-    requests.post(url, json=payload)
+(NAMA, EMAIL, NO_HP, BROKER, AKUN_MT5) = range(5)
 
-@app.route('/')
-def index():
-    return 'OK'
+--- Tombol menu awal ---
 
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    data = request.get_json()
-    if not data or "message" not in data:
-        return "no message"
+def start(update: Update, context: CallbackContext): keyboard = [["Daftar"]] reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True) update.message.reply_text("Selamat datang di DJGOLD_BOT!\n\nSilakan pilih menu:", reply_markup=reply_markup)
 
-    message = data["message"]
-    chat_id = message["chat"]["id"]
-    text = message.get("text", "")
+--- Mulai form daftar ---
 
-    if text == "/start":
-        welcome = "<b>Selamat datang di DJGOLD_BOT 🟡</b>\n\nSilakan pilih menu di bawah:"
-        keyboard = {
-            "keyboard": [
-                [{"text": "📋 Daftar Akun"}],
-                [{"text": "📊 Cek Status"}]
-            ],
-            "resize_keyboard": True,
-            "one_time_keyboard": False
-        }
-        send_message(chat_id, welcome, reply_markup=keyboard)
+def daftar(update: Update, context: CallbackContext): update.message.reply_text("📄 Masukkan Nama Lengkap Anda:", parse_mode='Markdown') return NAMA
 
-    return "ok"
+def input_nama(update: Update, context: CallbackContext): context.user_data['nama'] = update.message.text update.message.reply_text("📧 Masukkan Email Anda:", parse_mode='Markdown') return EMAIL
+
+def input_email(update: Update, context: CallbackContext): context.user_data['email'] = update.message.text update.message.reply_text("📱 Masukkan Nomor HP Anda:", parse_mode='Markdown') return NO_HP
+
+def input_nohp(update: Update, context: CallbackContext): context.user_data['no_hp'] = update.message.text update.message.reply_text("🏦 Masukkan Broker yang Anda gunakan:", parse_mode='Markdown') return BROKER
+
+def input_broker(update: Update, context: CallbackContext): context.user_data['broker'] = update.message.text update.message.reply_text("🔢 Masukkan Nomor Akun MT5 Anda:", parse_mode='Markdown') return AKUN_MT5
+
+def input_akun(update: Update, context: CallbackContext): context.user_data['akun_mt5'] = update.message.text
+
+# Kirim ringkasan pendaftaran ke admin
+data = context.user_data
+summary = f"🆕 Pendaftaran Baru:\n\n👤 Nama: {data['nama']}\n📧 Email: {data['email']}\n📱 No HP: {data['no_hp']}\n🏦 Broker: {data['broker']}\n🔢 Akun MT5: {data['akun_mt5']}"
+update.message.reply_text("✅ Pendaftaran berhasil dikirim! Admin akan segera memverifikasi.")
+
+# Ganti ID dengan ID Telegram admin kamu
+admin_id = 123456789
+context.bot.send_message(chat_id=admin_id, text=summary)
+return ConversationHandler.END
+
+def cancel(update: Update, context: CallbackContext): update.message.reply_text("❌ Pendaftaran dibatalkan.") return ConversationHandler.END
+
+--- Webhook Flask + Telegram ---
+
+@app.route("/") def index(): return "DJGOLD_BOT Phase 2 Aktif"
+
+@app.route("/webhook", methods=["POST"]) def webhook(): update = Update.de_json(request.get_json(force=True), bot) dispatcher.process_update(update) return "ok"
+
+--- Token & Dispatcher ---
+
+from telegram import Bot from telegram.ext import Updater
+
+TOKEN = "7524328423:AAGbx7KMgXRzIr9gAmg9I4WznFRmWiXKuNQ" bot = Bot(token=TOKEN) dispatcher = Dispatcher(bot, None, workers=0, use_context=True)
+
+--- Register handler ---
+
+conv_handler = ConversationHandler( entry_points=[MessageHandler(Filters.regex("^(Daftar)$"), daftar)], states={ NAMA: [MessageHandler(Filters.text & ~Filters.command, input_nama)], EMAIL: [MessageHandler(Filters.text & ~Filters.command, input_email)], NO_HP: [MessageHandler(Filters.text & ~Filters.command, input_nohp)], BROKER: [MessageHandler(Filters.text & ~Filters.command, input_broker)], AKUN_MT5: [MessageHandler(Filters.text & ~Filters.command, input_akun)], }, fallbacks=[CommandHandler("cancel", cancel)] )
+
+dispatcher.add_handler(CommandHandler("start", start)) dispatcher.add_handler(conv_handler)
+
