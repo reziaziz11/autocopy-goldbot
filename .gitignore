@@ -1,28 +1,22 @@
-# Ignore Python cache
+# Jangan push file konfigurasi sensitif
+.env
+
+# Cache Python
 __pycache__/
 *.py[cod]
-*.pyo
 
-# Ignore environment files
-.env
-.env.*
+# File database/instance lokal (jika ada)
+*.db
+instance/
+*.sqlite3
 
-# Ignore virtual environments
-venv/
-.venv/
-
-# Ignore macOS system files
-.DS_Store
-
-# Ignore IDE config
-.vscode/
-.idea/
-
-# Ignore log files
+# Log files
 *.log
 
-# Ignore compiled files
-*.so
-*.egg-info/
-build/
-dist/
+# Mac/VSCode internal files
+.DS_Store
+.vscode/
+
+# Virtual environments (opsional, kalau gak pakai venv lokal bisa dilepas)
+.venv/
+env/
