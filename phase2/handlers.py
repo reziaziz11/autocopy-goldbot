@@ -1,13 +1,8 @@
 from telegram import Update, ForceReply
 from telegram.ext import ContextTypes
 
-# Menyimpan data sementara (bisa diganti ke database nanti)
 user_states = {}
-
-# Langkah-langkah form
 form_steps = ['full_name', 'email', 'phone', 'broker', 'mt5_account']
-
-# Label pertanyaan
 form_questions = {
     'full_name': "📛 Masukkan *Nama Lengkap* Anda:",
     'email': "📧 Masukkan *Email* aktif Anda:",
@@ -16,18 +11,15 @@ form_questions = {
     'mt5_account': "💹 Masukkan *Nomor Akun MT5* Anda:"
 }
 
-# Memulai pendaftaran
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_states[user_id] = {'step': 0, 'data': {}}
     await update.message.reply_markdown(form_questions[form_steps[0]], reply_markup=ForceReply())
 
-# Menangani tiap input user
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     text = update.message.text.strip()
 
-    # Jika belum mulai pendaftaran
     if user_id not in user_states:
         await update.message.reply_text("Ketik /start untuk memulai pendaftaran.")
         return
@@ -41,7 +33,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         next_step = form_steps[state['step']]
         await update.message.reply_markdown(form_questions[next_step], reply_markup=ForceReply())
     else:
-        # Pendaftaran selesai
         data = state['data']
         user_states.pop(user_id)
         summary = (
