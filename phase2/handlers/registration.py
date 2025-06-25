@@ -1,62 +1,66 @@
 from telegram import Update
 from telegram.ext import (
-    ContextTypes, ConversationHandler, CommandHandler,
-    MessageHandler, filters
+    ConversationHandler,
+    CommandHandler,
+    MessageHandler,
+    filters,
+    ContextTypes,
 )
 
-NAMA, EMAIL, WHATSAPP, BROKER, AKUN = range(5)
+# States
+ASK_NAME, ASK_EMAIL, ASK_PHONE, ASK_BROKER, ASK_ACCOUNT = range(5)
 
-async def start_form(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "Selamat datang di DJGOLD BOT 🚀\n\nYuk daftar dulu!\n\n✏️ Siapa nama lengkap kamu?"
-    )
-    return NAMA
+async def start_registration(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🟡 Masukkan nama lengkap Anda:")
+    return ASK_NAME
 
-async def get_nama(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['nama'] = update.message.text
-    await update.message.reply_text("📧 Email kamu?")
-    return EMAIL
+async def ask_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["name"] = update.message.text
+    await update.message.reply_text("📧 Masukkan email Anda:")
+    return ASK_EMAIL
 
-async def get_email(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['email'] = update.message.text
-    await update.message.reply_text("📱 Nomor WhatsApp kamu?")
-    return WHATSAPP
+async def ask_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["email"] = update.message.text
+    await update.message.reply_text("📱 Masukkan nomor HP Anda:")
+    return ASK_PHONE
 
-async def get_whatsapp(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['whatsapp'] = update.message.text
-    await update.message.reply_text("💼 Broker yang kamu pakai?")
-    return BROKER
+async def ask_broker(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["phone"] = update.message.text
+    await update.message.reply_text("💼 Masukkan broker yang Anda gunakan:")
+    return ASK_BROKER
 
-async def get_broker(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['broker'] = update.message.text
-    await update.message.reply_text("🔢 Nomor akun MT5 kamu?")
-    return AKUN
+async def ask_account(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["broker"] = update.message.text
+    await update.message.reply_text("🔢 Masukkan nomor akun MT5 Anda:")
+    return ASK_ACCOUNT
 
-async def get_akun(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data['akun'] = update.message.text
-    data = context.user_data
+async def finish_registration(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["account"] = update.message.text
 
     summary = (
-        f"✅ Data kamu tercatat:\n\n"
-        f"👤 Nama: {data['nama']}\n"
-        f"📧 Email: {data['email']}\n"
-        f"📱 WA: {data['whatsapp']}\n"
-        f"💼 Broker: {data['broker']}\n"
-        f"🔢 Akun MT5: {data['akun']}"
+        f"✅ Pendaftaran selesai!\n\n"
+        f"🧑 Nama: {context.user_data['name']}\n"
+        f"📧 Email: {context.user_data['email']}\n"
+        f"📱 HP: {context.user_data['phone']}\n"
+        f"💼 Broker: {context.user_data['broker']}\n"
+        f"🔢 Akun MT5: {context.user_data['account']}"
     )
 
     await update.message.reply_text(summary)
     return ConversationHandler.END
 
-def get_registration_handler():
-    return ConversationHandler(
-        entry_points=[CommandHandler("start", start_form)],
-        states={
-            NAMA: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_nama)],
-            EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_email)],
-            WHATSAPP: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_whatsapp)],
-            BROKER: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_broker)],
-            AKUN: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_akun)],
-        },
-        fallbacks=[],
-    )
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("❌ Pendaftaran dibatalkan.")
+    return ConversationHandler.END
+
+registration_conversation_handler = ConversationHandler(
+    entry_points=[CommandHandler("daftar", start_registration)],
+    states={
+        ASK_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_email)],
+        ASK_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_phone)],
+        ASK_PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_broker)],
+        ASK_BROKER: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_account)],
+        ASK_ACCOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, finish_registration)],
+    },
+    fallbacks=[CommandHandler("cancel", cancel)],
+)
