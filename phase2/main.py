@@ -1,30 +1,21 @@
+# phase2/main.py
+
+from telegram.ext import Application, CommandHandler
 import os
-import asyncio
-from flask import Flask, request
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-if not BOT_TOKEN:
-    raise Exception("BOT_TOKEN belum di-set!")
+# Ganti ini dengan token bot kamu, atau ambil dari environment variable
+BOT_TOKEN = os.getenv("BOT_TOKEN", "7524328423:AAGbx7KMgXRzIr9gAmg9I4WznFRmWiXKuNQ")
 
-app = Flask(__name__)
+# Fungsi command awal
+async def start(update, context):
+    await update.message.reply_text("Hai! Bot aktif 🎉")
+
+# Bangun application (NO Updater, NO legacy mode)
 application = Application.builder().token(BOT_TOKEN).build()
 
-# Handler /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Bot aktif via webhook ✅")
-
+# Tambahkan handler seperti biasa
 application.add_handler(CommandHandler("start", start))
 
-# Webhook endpoint
-@app.route('/webhook', methods=['POST'])
-async def handle_webhook():
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    await application.process_update(update)
-    return "ok"
-
-# Jalankan application saat Flask mulai
-@app.before_first_request
-def start_bot():
-    asyncio.create_task(application.initialize())
+# Jalankan bot dengan polling (paling mudah dan stabil)
+if __name__ == "__main__":
+    application.run_polling()
