@@ -1,46 +1,43 @@
-import os
-import asyncio
-from telegram import Bot, Update
-from telegram.constants import ParseMode
 from flask import Flask, request
+from telegram import Bot, Update
+import os
 
-# Ambil token & secret dari variabel environment
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "ISI_TOKEN_KAMU")
-SECRET_PATH = os.environ.get("SECRET_PATH", "webhook")
-
-# Inisialisasi Flask
-app = Flask(__name__)
+# Token bot Telegram
+BOT_TOKEN = "7524328423:AAFPrLxZtxnyyGmmguhc5KU_e524xnq4thI"
 bot = Bot(token=BOT_TOKEN)
 
-# Webhook handler (POST dari Telegram)
-@app.route(f"/{SECRET_PATH}", methods=["POST"])
-def webhook_handler():
-    if request.method == "POST":
+app = Flask(__name__)
+
+@app.route("/")
+def index():
+    return "DJGOLD BOT IS RUNNING ✅"
+
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    try:
         data = request.get_json(force=True)
         update = Update.de_json(data, bot)
 
-        if update.message:
-            chat_id = update.message.chat.id
-            message = update.message.text
+        chat_id = update.effective_chat.id
+        message = update.effective_message.text
 
-            # Balas otomatis
-            asyncio.run(bot.send_message(
-                chat_id=chat_id,
-                text=f"Halo! Kamu kirim: <b>{message}</b>",
-                parse_mode=ParseMode.HTML
-            ))
+        print(f"[LOG] Pesan dari {chat_id}: {message}")
 
-        return "ok", 200
+        if message == "/start":
+            bot.send_message(chat_id=chat_id, text="Selamat datang di DJGOLD BOT 💰\n\nPantau sinyal & auto-copy XAUUSD di sini!")
 
-# Tes kirim pesan manual (akses dari luar, opsional)
-@app.route("/test")
-def test_send():
-    chat_id = os.environ.get("TEST_CHAT_ID", "")  # set di env
-    if chat_id:
-        asyncio.run(bot.send_message(chat_id=chat_id, text="Test dari /test endpoint"))
-        return "Pesan test dikirim!", 200
-    return "CHAT_ID belum di-set", 400
+        elif "halo" in message.lower():
+            bot.send_message(chat_id=chat_id, text="Halo juga! Ada yang bisa dibantu?")
 
-# Jalankan Flask di Render
+        else:
+            bot.send_message(chat_id=chat_id, text="Perintah tidak dikenali. Ketik /start untuk memulai.")
+
+        return "OK", 200
+
+    except Exception as e:
+        print("[ERROR]", e)
+        return "Internal Server Error", 500
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    port = int(os.environ.get("PORT", 10000))  # default port Render
+    app.run(host="0.0.0.0", port=port)
