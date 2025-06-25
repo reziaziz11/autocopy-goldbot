@@ -1,33 +1,41 @@
-import os
 from flask import Flask, request
-from telegram import Update, Bot
-from telegram.ext import Application, MessageHandler, CommandHandler, ContextTypes
-from telegram.ext import filters
+from telegram import Bot, Update
+from telegram.ext import CommandHandler, ContextTypes
+from telegram.ext import Dispatcher
+import os
 from dotenv import load_dotenv
-from handlers import start, handle_message
 
+# Load .env file
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 
+# Init Flask app
 app = Flask(__name__)
+bot = Bot(token=TOKEN)
 
-bot_app = Application.builder().token(TOKEN).build()
-
-# Register command and message handlers
-bot_app.add_handler(CommandHandler("start", start))
-bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-# Webhook endpoint
-@app.route('/webhook', methods=['POST'])
-async def webhook():
-    update = Update.de_json(request.get_json(force=True), bot_app.bot)
-    await bot_app.process_update(update)
-    return 'OK', 200
-
-# Health check
-@app.route('/', methods=['GET'])
+@app.route('/')
 def home():
-    return 'DJGOLD_BOT is alive ✅'
+    return 'Bot is Live!'
 
-if __name__ == '__main__':
-    bot_app.run_polling()  # won't be called on Render, but for local test
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    if request.method == "POST":
+        update = Update.de_json(request.get_json(force=True), bot)
+        handle_update(update)
+    return "ok"
+
+# Handler langsung tanpa Application
+def handle_update(update: Update):
+    message = update.message
+    if message:
+        text = message.text
+        chat_id = message.chat.id
+
+        if text == "/start":
+            bot.send_message(chat_id=chat_id, text="Selamat datang di GOLD EXPERT BOT 🚀\nKetik /daftar untuk memulai.")
+        elif text == "/daftar":
+            bot.send_message(chat_id=chat_id, text="📝 Silakan masukkan *Nama Lengkap* kamu:", parse_mode="Markdown")
+
+# Run
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
